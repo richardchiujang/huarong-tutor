@@ -131,16 +131,26 @@ export default function Home() {
         if (stopDemoRef.current) break;
 
         const move = solutionPath[i];
-        const piece = currentPieces.find(p => p.id === move.pieceId)!;
+        const piece = currentPieces.find(p => p.id === move.pieceId);
+        
+        if (!piece) {
+          console.error("Piece not found in demo:", move.pieceId);
+          break;
+        }
         
         const dx = move.direction === 'left' ? -1 : move.direction === 'right' ? 1 : 0;
         const dy = move.direction === 'up' ? -1 : move.direction === 'down' ? 1 : 0;
         
-        const newPiece = { ...piece, x: piece.x + dx, y: piece.y + dy };
-        const newPieces = currentPieces.map(p => p.id === piece.id ? newPiece : p);
+        const newX = piece.x + dx;
+        const newY = piece.y + dy;
+        
+        // 建立一個新狀態，並將目標棋子移到新位置
+        const newPieces = currentPieces.map(p => 
+          p.id === move.pieceId ? { ...p, x: newX, y: newY } : p
+        );
         
         applyDemoMove(newPieces);
-        currentPieces = newPieces; // Update local ref for next iteration
+        currentPieces = newPieces; // 重要：將更新後的棋子狀態傳入下一次迭代，避免堆疊時發生重疊問題
 
         // Wait for animation
         await new Promise(resolve => setTimeout(resolve, 400)); // 400ms per move

@@ -65,10 +65,11 @@ export function solvePuzzle(initialPieces: Piece[], maxNodes = 30000): { pieceId
 
     // Generate moves
     for (const piece of pieces) {
+      // 獲取該棋子能到達的所有合法目標位置
       const moves = getValidMoves(piece, pieces);
       
       for (const movePos of moves) {
-        // Determine direction
+        // 判對移動方向
         let direction: 'up' | 'down' | 'left' | 'right' | null = null;
         if (movePos.x === piece.x && movePos.y < piece.y) direction = 'up';
         else if (movePos.x === piece.x && movePos.y > piece.y) direction = 'down';
@@ -76,18 +77,32 @@ export function solvePuzzle(initialPieces: Piece[], maxNodes = 30000): { pieceId
         else if (movePos.x > piece.x && movePos.y === piece.y) direction = 'right';
 
         if (direction) {
-          // Apply move
-          const newPieces = clonePieces(pieces);
-          const movedPiece = newPieces.find(p => p.id === piece.id)!;
-          movedPiece.x = movePos.x;
-          movedPiece.y = movePos.y;
+          // ⚠️ 關鍵修復：
+          // getValidMoves 可能回傳多步移動的結果（如滑到底）。
+          // 但 demo 的循環邏輯每次只移動 1 個單位 (dx/dy = +/-1)。
+          // 我們需要將「長距離移動」拆解為多個單步移動，
+          // 確保 demo 演示時能保持一致的步率與狀態檢查。
+          
+          const steps = Math.abs(movePos.x - piece.x) + Math.abs(movePos.y - piece.y);
+          const currentPath = [...path];
+          let currentPieces = clonePieces(pieces);
 
-          const key = serialize(newPieces);
+          for (let s = 1; s <= steps; s++) {
+            const stepX = piece.x + (s * (movePos.x - piece.x) / steps);
+            const stepY = piece.y + (s * (movePos.y - piece.y) / steps);
+            
+            currentPieces = currentPieces.map(p => 
+              p.id === piece.id ? { ...p, x: stepX, y: stepY } : p
+            );
+            currentPath.push({ pieceId: piece.id, direction });
+          }
+
+          const key = serialize(currentPieces);
           if (!visited.has(key)) {
             visited.add(key);
             queue.push({
-              pieces: newPieces,
-              path: [...path, { pieceId: piece.id, direction }]
+              pieces: currentPieces,
+              path: currentPath
             });
           }
         }
